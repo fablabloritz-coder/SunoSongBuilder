@@ -65,11 +65,16 @@ Aucune dependance, aucun build, aucune installation.
 
 - Outils de rimes (dans l'editeur de section):
   - templates de rimes (AABB, ABAB, ABBA, AAAA, etc.)
-  - detecteur de rimes (score + groupes de finales)
+  - detecteur de rimes (score + groupes de finales + details ligne par ligne)
 - Compteur de syllabes (dans l'editeur de section):
   - analyse locale heuristique FR (sans API)
   - syllabes moyennes par ligne
-  - regularite metrique (ecart-type)
+  - regularite metrique (ecart-type + barres visuelles par ligne)
+
+- Personnalisation de lisibilite (onglet Studio):
+  - ajustement largeur panneau gauche
+  - ajustement largeur panneau droite
+  - sauvegarde automatique des preferences de layout
 - Estimation de duree de morceau
 - Optimiseur de style prompt (`Wand Style`)
 - Correctif responsive de l'onglet `Apercu Suno` (plus de debordement horizontal)
