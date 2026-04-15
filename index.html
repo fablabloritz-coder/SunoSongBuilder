@@ -525,6 +525,15 @@ const PERFORMANCE_TAGS = [
   'A cappella','Belting','Falsetto','Growl','Scream','Humming'
 ];
 
+const RHYME_TEMPLATES = [
+  {id:'AABB', label:'AABB (couplets paires)', pattern:['A','A','B','B']},
+  {id:'ABAB', label:'ABAB (alterne)', pattern:['A','B','A','B']},
+  {id:'ABBA', label:'ABBA (embrassee)', pattern:['A','B','B','A']},
+  {id:'AAAA', label:'AAAA (monorime)', pattern:['A','A','A','A']},
+  {id:'AABCCB', label:'AABCCB (narratif 6 lignes)', pattern:['A','A','B','C','C','B']},
+  {id:'ABABCC', label:'ABABCC (punchline finale)', pattern:['A','B','A','B','C','C']}
+];
+
 const SINGER_COLORS = [
   '#60a5fa','#f472b6','#a78bfa','#34d399','#fb923c',
   '#f87171','#38bdf8','#c084fc','#fbbf24','#22d3ee',
@@ -1033,6 +1042,7 @@ function loadEditor(id) {
 
   // Mood tags
   const moodOpts = MOOD_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+  const rhymeOpts = RHYME_TEMPLATES.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
 
   el.innerHTML = `
     <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
@@ -1096,6 +1106,16 @@ function loadEditor(id) {
                 placeholder="Ecrivez les paroles ici...&#10;&#10;Chaque ligne = une ligne chantee&#10;Les lignes vides sont conservees">${escHtml(sec.lyrics||'')}</textarea>
     </div>
 
+    <div class="form-row">
+      <label>Outils de rimes</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="rhymeTemplateSel">${rhymeOpts}</select>
+        <button class="btn small" onclick="applyRhymeTemplate('${id}')">Appliquer trame</button>
+        <button class="btn small" onclick="detectRhymeForSection('${id}')">Detecter rimes</button>
+      </div>
+      <div id="rhymeReport" style="margin-top:8px;font-size:.8rem;color:var(--text2)"></div>
+    </div>
+
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn small" onclick="navigateSection(-1)">← Precedente</button>
       <button class="btn small" onclick="navigateSection(1)">Suivante →</button>
@@ -1103,6 +1123,68 @@ function loadEditor(id) {
       <button class="btn small danger" onclick="deleteSection('${id}')">Supprimer</button>
     </div>
   `;
+
+  detectRhymeForSection(id, true);
+}
+
+function buildRhymeSkeleton(template) {
+  const buckets = {
+    A: ['Ligne A - termine par une rime en -eur', 'Image forte qui finit en -eur'],
+    B: ['Ligne B - termine par une rime en -ance', 'Progression qui finit en -ance'],
+    C: ['Ligne C - termine par une rime en -ite', 'Punchline qui finit en -ite']
+  };
+  const counters = {A:0,B:0,C:0};
+  return template.pattern.map(letter => {
+    const arr = buckets[letter] || [`Ligne ${letter}`];
+    const idx = counters[letter] || 0;
+    counters[letter] = idx + 1;
+    return arr[idx % arr.length];
+  }).join('\n');
+}
+
+function applyRhymeTemplate(secId) {
+  const sec = sectionById(secId);
+  const sel = document.getElementById('rhymeTemplateSel');
+  if (!sec || !sel) return;
+  const tpl = RHYME_TEMPLATES.find(t => t.id === sel.value);
+  if (!tpl) return;
+
+  const hasLyrics = sec.lyrics && sec.lyrics.trim();
+  if (hasLyrics && !confirm('Remplacer les paroles de cette section par une trame de rimes ?')) return;
+
+  pushUndo();
+  sec.lyrics = buildRhymeSkeleton(tpl);
+  renderSections();
+  loadEditor(secId);
+  refreshPreview();
+  autoSave();
+  toast(`Trame ${tpl.id} appliquee`);
+}
+
+function detectRhymeForSection(secId, silent=false) {
+  const sec = sectionById(secId);
+  const out = document.getElementById('rhymeReport');
+  if (!sec || !out) return;
+
+  const result = detectRhymesInLyrics(sec.lyrics || '');
+  if (!result.linesCount) {
+    out.innerHTML = '<span style="color:var(--text3)">Aucune ligne analysee.</span>';
+    if (!silent) toast('Aucune ligne a analyser', 'info');
+    return;
+  }
+
+  const groupTxt = result.repeatedGroups.length
+    ? result.repeatedGroups.map(([k, arr]) => `${k} (${arr.length})`).join(' • ')
+    : 'aucune rime repetee detectee';
+
+  const qualityColor = result.score >= 60 ? 'var(--green)' : (result.score >= 35 ? 'var(--yellow)' : 'var(--red)');
+  out.innerHTML = `
+    <div>Score rimes: <strong style="color:${qualityColor}">${result.score}/100</strong> (${result.linesCount} lignes)</div>
+    <div style="margin-top:4px">Groupes: ${escHtml(groupTxt)}</div>
+    <div style="margin-top:4px;color:var(--text3)">Astuce: visez 40-70 pour un bon equilibre (trop haut = monotone).</div>
+  `;
+
+  if (!silent) toast(`Analyse rimes: ${result.score}/100`);
 }
 
 function updateSec(id, field, value) {
@@ -1205,6 +1287,62 @@ function normalizeMoodTag(tag, mode='balanced') {
     'Chorale en arriere-plan':'Background Choir'
   };
   return m[tag] || tag;
+}
+
+function normalizeWordForRhyme(word) {
+  return (word || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function rhymeKey(word) {
+  const w = normalizeWordForRhyme(word);
+  if (!w) return '';
+  const vowels = 'aeiouy';
+  let idx = -1;
+  for (let i = w.length - 1; i >= 0; i--) {
+    if (vowels.includes(w[i])) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx === -1) return w.slice(-3);
+  return w.slice(Math.max(0, idx - 1));
+}
+
+function detectRhymesInLyrics(lyrics) {
+  const lines = (lyrics || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const data = [];
+
+  lines.forEach((line, idx) => {
+    const words = line.split(/\s+/).filter(Boolean);
+    const last = words.length ? words[words.length - 1] : '';
+    const key = rhymeKey(last);
+    data.push({index: idx + 1, line, lastWord: normalizeWordForRhyme(last), key});
+  });
+
+  const groups = {};
+  data.forEach(d => {
+    if (!d.key) return;
+    if (!groups[d.key]) groups[d.key] = [];
+    groups[d.key].push(d);
+  });
+
+  const repeatedGroups = Object.entries(groups)
+    .filter(([, arr]) => arr.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length);
+
+  const repeatedLines = repeatedGroups.reduce((acc, [, arr]) => acc + arr.length, 0);
+  const score = lines.length ? Math.round((repeatedLines / lines.length) * 100) : 0;
+
+  return {
+    linesCount: lines.length,
+    score,
+    repeatedGroups,
+    details: data
+  };
 }
 
 function renderSunoTextWithMode(mode='balanced') {
@@ -1396,6 +1534,7 @@ function detectCompatibilityIssues() {
 
   project.sections.forEach((sec, idx) => {
     const where = `${idx + 1}. ${sec.sectionType}${sec.number ? ' ' + sec.number : ''}`;
+    const rhymeInfo = detectRhymesInLyrics(sec.lyrics || '');
 
     if (sec.assignment === 'instrumental') {
       if (sec.lyrics && sec.lyrics.trim()) {
@@ -1412,6 +1551,10 @@ function detectCompatibilityIssues() {
 
     if (sec.lyrics && sec.lyrics.split('\n').filter(l => l.trim()).length > 16) {
       issues.push({level:'warn', code:'section-too-long', sectionId:sec.id, message:`${where}: section tres longue (>16 lignes), envisagez un split pour Suno.`});
+    }
+
+    if (rhymeInfo.linesCount >= 4 && rhymeInfo.score < 20 && sec.assignment !== 'instrumental') {
+      issues.push({level:'warn', code:'low-rhyme-cohesion', sectionId:sec.id, message:`${where}: cohesion de rimes faible (${rhymeInfo.score}/100), impact potentiel sur memorabilite.`});
     }
 
     if (!['all','instrumental','public','mixed'].includes(sec.assignment) && !singerById(sec.assignment)) {

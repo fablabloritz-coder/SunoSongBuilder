@@ -60,6 +60,11 @@ Aucune dependance, aucun build, aucune installation.
   - trop de sections pour une generation unique
   - section trop longue (>16 lignes)
   - absence de chorus
+  - cohesion de rimes faible sur sections vocales
+
+- Outils de rimes (dans l'editeur de section):
+  - templates de rimes (AABB, ABAB, ABBA, AAAA, etc.)
+  - detecteur de rimes (score + groupes de finales)
 - Estimation de duree de morceau
 - Optimiseur de style prompt (`Wand Style`)
 - Correctif responsive de l'onglet `Apercu Suno` (plus de debordement horizontal)
