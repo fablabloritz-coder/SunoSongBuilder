@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suno Song Builder</title>
+<style>
+/* ═══════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0c18;--bg2:#12122a;--bg3:#1a1a3e;--bg4:#222255;
+  --text:#d4d4f0;--text2:#9999bb;--text3:#666688;
+  --accent:#7c5cfc;--accent2:#a78bfa;--accent-dim:#3d2e7e;
+  --red:#ef4444;--green:#22c55e;--yellow:#eab308;--blue:#3b82f6;
+  --orange:#f97316;--pink:#ec4899;--cyan:#06b6d4;--lime:#84cc16;
+  --border:#2a2a50;--card:#161633;--card-hover:#1e1e44;
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'Cascadia Code','Fira Code','Consolas',monospace;
+}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent-dim)}
+a{color:var(--accent2);text-decoration:none}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════ */
+#app{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+
+/* Top bar */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.topbar .logo{font-size:1.3rem;font-weight:700;color:var(--accent2);
+  display:flex;align-items:center;gap:8px;white-space:nowrap}
+.topbar .logo span{font-size:1.6rem}
+.topbar input,.topbar select{background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);padding:6px 12px;border-radius:var(--radius-sm);font-size:.9rem}
+.topbar input:focus{outline:none;border-color:var(--accent)}
+.topbar input.title-input{font-weight:600;font-size:1rem;width:220px}
+.topbar input.style-input{width:320px}
+.topbar-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+
+/* Main area */
+.main{display:grid;grid-template-columns:260px 1fr 380px;gap:0;overflow:hidden}
+
+/* Status bar */
+.statusbar{background:var(--bg2);border-top:1px solid var(--border);
+  padding:6px 20px;font-size:.8rem;color:var(--text2);
+  display:flex;justify-content:space-between;align-items:center}
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════ */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg3);color:var(--text);font-size:.85rem;cursor:pointer;
+  transition:all .15s;white-space:nowrap;font-family:var(--font)}
+.btn:hover{background:var(--bg4);border-color:var(--accent-dim)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary:hover{background:var(--accent2)}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.danger:hover{background:var(--red);color:#fff}
+.btn.small{padding:4px 10px;font-size:.78rem}
+.btn.tiny{padding:2px 8px;font-size:.72rem;border-radius:4px}
+.btn.icon-only{padding:6px 8px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+/* ═══════════════════════════════════════════
+   LEFT PANEL — SINGERS
+   ═══════════════════════════════════════════ */
+.panel-left{background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden}
+.panel-header{padding:12px 16px;font-weight:700;font-size:.95rem;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;
+  justify-content:space-between;gap:8px}
+.panel-header .badge{background:var(--accent-dim);color:var(--accent2);
+  font-size:.7rem;padding:2px 8px;border-radius:10px}
+
+.singers-list{flex:1;overflow-y:auto;padding:8px}
+.singer-card{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;
+  cursor:pointer;transition:all .15s;position:relative;border-left:4px solid transparent}
+.singer-card:hover{background:var(--card-hover)}
+.singer-card.active{border-color:var(--accent);background:var(--card-hover)}
+.singer-card .singer-name{font-weight:600;font-size:.9rem}
+.singer-card .singer-meta{font-size:.75rem;color:var(--text2);margin-top:3px}
+.singer-card .singer-badge{position:absolute;top:8px;right:10px;
+  font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px}
+.singer-card .singer-badge.male{background:#1e3a5f;color:#60a5fa}
+.singer-card .singer-badge.female{background:#5f1e3a;color:#f472b6}
+
+.singer-form{padding:12px 16px;border-top:1px solid var(--border);background:var(--bg)}
+.singer-form h4{font-size:.85rem;margin-bottom:10px;color:var(--text2)}
+.form-row{margin-bottom:8px}
+.form-row label{display:block;font-size:.75rem;color:var(--text2);
+  margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.form-row input,.form-row select{width:100%;background:var(--bg3);
+  border:1px solid var(--border);color:var(--text);padding:6px 10px;
+  border-radius:var(--radius-sm);font-size:.85rem}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--accent)}
+.radio-group{display:flex;gap:12px}
+.radio-group label{display:flex;align-items:center;gap:4px;font-size:.85rem;
+  cursor:pointer;text-transform:none;letter-spacing:0;color:var(--text)}
+.singer-form-actions{display:flex;gap:6px;margin-top:10px}
+
+/* Quick add section buttons */
+.quick-sections{padding:12px 16px;border-top:1px solid var(--border)}
+.quick-sections h4{font-size:.8rem;color:var(--text2);margin-bottom:8px;
+  text-transform:uppercase;letter-spacing:.5px}
+.quick-btns{display:flex;flex-wrap:wrap;gap:4px}
+.quick-btns .btn{font-size:.7rem;padding:3px 8px}
+
+/* ═══════════════════════════════════════════
+   CENTER — SECTIONS
+   ═══════════════════════════════════════════ */
+.panel-center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.sections-toolbar{padding:8px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--bg2)}
+.sections-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
+
+/* Section card */
+.section-card{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:0;transition:all .2s;position:relative;
+  border-left:4px solid var(--bg4);overflow:hidden}
+.section-card:hover{border-color:var(--accent-dim)}
+.section-card.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-dim)}
+.section-card.dragging{opacity:.5;transform:scale(.97)}
+.section-card.drag-over{border-top:3px solid var(--accent)}
+
+.section-head{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  cursor:grab;user-select:none}
+.section-head:active{cursor:grabbing}
+.section-drag-handle{color:var(--text3);font-size:1.1rem;flex-shrink:0}
+.section-type-badge{font-weight:700;font-size:.8rem;padding:3px 10px;
+  border-radius:6px;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+.section-assign{font-size:.78rem;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.section-mood-pills{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.section-mood-pills .pill{font-size:.65rem;padding:2px 7px;border-radius:10px;
+  background:rgba(34,197,94,.12);color:var(--green);white-space:nowrap}
+.section-perf-pill{font-size:.65rem;padding:2px 7px;border-radius:10px;
+  background:rgba(234,179,8,.12);color:var(--yellow);white-space:nowrap}
+.section-actions{display:flex;gap:3px;margin-left:auto;flex-shrink:0}
+.section-preview{padding:0 14px 10px 44px;font-size:.8rem;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Section type colors */
+.stype-INTRO{background:#1a2744;color:#60a5fa}
+.stype-VERSE{background:#1a3320;color:#6ee7b7}
+.stype-PRE-CHORUS{background:#332a1a;color:#fbbf24}
+.stype-CHORUS{background:#3d1a2e;color:#f472b6}
+.stype-POST-CHORUS{background:#3d1a3d;color:#e879f9}
+.stype-BRIDGE{background:#2e1a3d;color:#a78bfa}
+.stype-HOOK{background:#3d2e1a;color:#fb923c}
+.stype-INSTRUMENTAL{background:#1a2e3d;color:#67e8f9}
+.stype-INTERLUDE{background:#1a3d3d;color:#5eead4}
+.stype-BREAK{background:#2a2a2a;color:#a1a1aa}
+.stype-DROP{background:#3d1a1a;color:#f87171}
+.stype-OUTRO{background:#1a2233;color:#94a3b8}
+.stype-END{background:#1a1a2e;color:#818cf8}
+.stype-ROUND-FINAL{background:#3d331a;color:#fde047}
+
+/* Empty state */
+.empty-state{text-align:center;padding:60px 24px;color:var(--text3)}
+.empty-state .icon{font-size:3rem;margin-bottom:16px}
+.empty-state h3{color:var(--text2);margin-bottom:8px}
+.empty-state p{font-size:.85rem;max-width:400px;margin:0 auto 20px}
+
+/* ═══════════════════════════════════════════
+   RIGHT PANEL — PREVIEW + EDITOR
+   ═══════════════════════════════════════════ */
+.panel-right{display:flex;flex-direction:column;border-left:1px solid var(--border);
+  background:var(--bg2);overflow:hidden}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border)}
+.panel-tab{flex:1;padding:10px;text-align:center;font-size:.85rem;font-weight:600;
+  cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;
+  color:var(--text2)}
+.panel-tab:hover{color:var(--text);background:var(--bg3)}
+.panel-tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.tab-content{flex:1;overflow:hidden;display:none;flex-direction:column}
+.tab-content.active{display:flex}
+
+/* Preview */
+.preview-toolbar{padding:8px 12px;display:flex;gap:6px;border-bottom:1px solid var(--border)}
+.preview-area{flex:1;overflow-y:auto;padding:16px;font-family:var(--mono);
+  font-size:.85rem;line-height:1.7;white-space:pre-wrap;background:#0a0a14}
+.preview-area .tag{color:#f9e2af;font-weight:700}
+.preview-area .mood{color:#a6e3a1;font-style:italic}
+.preview-area .perf{color:#fab387}
+.preview-area .singer-tag{color:#89b4fa}
+.preview-area .global-note{color:#cba6f7}
+.preview-area .lyric{color:#cdd6f4}
+
+/* Editor */
+.editor-area{flex:1;overflow-y:auto;padding:16px}
+.editor-area .form-row{margin-bottom:12px}
+.editor-area .form-row textarea{width:100%;background:var(--bg3);
+  border:1px solid var(--border);color:var(--text);padding:10px;
+  border-radius:var(--radius-sm);font-family:var(--mono);font-size:.85rem;
+  resize:vertical;min-height:120px;line-height:1.6}
+.editor-area .form-row textarea:focus{outline:none;border-color:var(--accent)}
+.editor-area .form-row .combo-wrap{position:relative}
+.editor-area .mood-tags-display{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.editor-area .mood-tags-display .pill{font-size:.75rem;padding:3px 10px;
+  border-radius:10px;background:rgba(34,197,94,.15);color:var(--green);
+  cursor:pointer;transition:all .12s}
+.editor-area .mood-tags-display .pill:hover{background:rgba(239,68,68,.2);color:var(--red)}
+.editor-area .mood-tags-display .pill:hover::after{content:' ✕'}
+
+.editor-placeholder{text-align:center;padding:40px;color:var(--text3);font-size:.9rem}
+
+/* ═══════════════════════════════════════════
+   MODAL
+   ═══════════════════════════════════════════ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);
+  display:none;align-items:center;justify-content:center;z-index:1000;
+  backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+  width:90%;max-width:700px;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:1.1rem;font-weight:700}
+.modal-body{padding:20px}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);
+  display:flex;justify-content:flex-end;gap:8px}
+
+/* Templates modal */
+.templates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.template-card{background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;cursor:pointer;transition:all .15s}
+.template-card:hover{border-color:var(--accent);background:var(--card-hover)}
+.template-card h4{font-size:.9rem;margin-bottom:6px;color:var(--accent2)}
+.template-card .tpl-sections{font-size:.7rem;color:var(--text2);line-height:1.5}
+.template-card .tpl-badge{font-size:.65rem;padding:2px 8px;border-radius:10px;
+  background:var(--accent-dim);color:var(--accent2);margin-top:8px;display:inline-block}
+
+/* ═══════════════════════════════════════════
+   TOASTS
+   ═══════════════════════════════════════════ */
+.toast-container{position:fixed;bottom:60px;right:20px;z-index:2000;
+  display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 18px;border-radius:var(--radius-sm);font-size:.85rem;
+  color:#fff;box-shadow:var(--shadow);animation:toastIn .3s ease;max-width:360px}
+.toast.success{background:#166534}
+.toast.error{background:#991b1b}
+.toast.info{background:#1e3a5f}
+@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media(max-width:1100px){
+  .main{grid-template-columns:220px 1fr 320px}
+}
+@media(max-width:900px){
+  .main{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+  .panel-left,.panel-right{border:none;border-bottom:1px solid var(--border)}
+  .panel-left{max-height:250px}
+  .panel-right{max-height:400px}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ TOP BAR ═══ -->
+  <div class="topbar">
+    <div class="logo"><span>♪</span> Suno Song Builder</div>
+    <input type="text" id="projectTitle" class="title-input" placeholder="Titre de la chanson" value="Ma Chanson">
+    <input type="text" id="projectStyle" class="style-input" placeholder="Style de musique (ex: rock energique, rap sombre, pop acoustique...)">
+    <select id="exportMode" title="Mode d'export Suno">
+      <option value="balanced" selected>Export: Equilibre</option>
+      <option value="strict">Export: Compatibilite stricte</option>
+    </select>
+    <div class="topbar-actions">
+      <button class="btn" onclick="showTemplates()" title="Templates de chanson">&#9776; Templates</button>
+      <button class="btn" onclick="importProject()" title="Ctrl+O">&#128194; Ouvrir</button>
+      <button class="btn" onclick="saveProject()" title="Ctrl+S">&#128190; Sauver</button>
+      <button class="btn primary" onclick="exportSuno()" title="Ctrl+E">&#128203; Exporter Suno</button>
+      <button class="btn" onclick="showHelp()">? Aide</button>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN AREA ═══ -->
+  <div class="main">
+
+    <!-- LEFT: Singers -->
+    <div class="panel-left">
+      <div class="panel-header">
+        Chanteurs <span class="badge" id="singerCount">0</span>
+        <button class="btn small primary" onclick="addSinger()">+ Ajouter</button>
+      </div>
+      <div class="singers-list" id="singersList"></div>
+      <div class="singer-form" id="singerForm" style="display:none">
+        <h4 id="singerFormTitle">Nouveau chanteur</h4>
+        <div class="form-row">
+          <label>Nom</label>
+          <input type="text" id="sfName" placeholder="Ex: Mo, Fenrice...">
+        </div>
+        <div class="form-row">
+          <label>Type de voix</label>
+          <div class="radio-group">
+            <label><input type="radio" name="sfType" value="male" checked> Homme</label>
+            <label><input type="radio" name="sfType" value="female"> Femme</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Phonetique Suno <span style="color:var(--text3)">(prononciation)</span></label>
+          <input type="text" id="sfPhonetic" placeholder="Ex: Fenn-riss pour Fenrice">
+        </div>
+        <div class="form-row">
+          <label>Description de la voix</label>
+          <input type="text" id="sfDesc" placeholder="Ex: voix grave, agressive">
+        </div>
+        <div class="singer-form-actions">
+          <button class="btn primary" onclick="saveSinger()">Enregistrer</button>
+          <button class="btn" onclick="cancelSinger()">Annuler</button>
+        </div>
+      </div>
+      <div class="quick-sections">
+        <h4>Ajout rapide de section</h4>
+        <div class="quick-btns" id="quickBtns"></div>
+      </div>
+    </div>
+
+    <!-- CENTER: Sections -->
+    <div class="panel-center">
+      <div class="sections-toolbar">
+        <button class="btn small" onclick="addSection('VERSE')">+ Couplet</button>
+        <button class="btn small" onclick="addSection('CHORUS')">+ Refrain</button>
+        <button class="btn small" onclick="addSection('BRIDGE')">+ Pont</button>
+        <button class="btn small" onclick="addSection('INTRO')">+ Intro</button>
+        <button class="btn small" onclick="addSection('OUTRO')">+ Outro</button>
+        <span style="flex:1"></span>
+        <button class="btn small" onclick="clearAllSections()" title="Tout supprimer">Vider</button>
+        <button class="btn small" onclick="autoNumber()" title="Re-numerote les sections">Auto-num</button>
+      </div>
+      <div class="sections-area" id="sectionsArea"></div>
+    </div>
+
+    <!-- RIGHT: Preview + Editor -->
+    <div class="panel-right">
+      <div class="panel-tabs">
+        <div class="panel-tab active" onclick="switchTab('editor')" id="tabEditor">Editeur</div>
+        <div class="panel-tab" onclick="switchTab('preview')" id="tabPreview">Apercu Suno</div>
+      </div>
+
+      <!-- TAB: Editor -->
+      <div class="tab-content active" id="contentEditor">
+        <div class="editor-area" id="editorArea">
+          <div class="editor-placeholder">Selectionnez une section pour l'editer</div>
+        </div>
+      </div>
+
+      <!-- TAB: Preview -->
+      <div class="tab-content" id="contentPreview">
+        <div class="preview-toolbar">
+          <button class="btn small" onclick="refreshPreview()">Rafraichir</button>
+          <button class="btn small primary" onclick="copyPreview()">Copier tout</button>
+          <button class="btn small" onclick="copyStrictPreview()">Copier strict</button>
+          <button class="btn small" onclick="runCompatibilityCheck()">Diagnostiquer</button>
+          <button class="btn small" onclick="exportSuno()">Exporter .txt</button>
+          <span style="flex:1"></span>
+          <span id="previewStats" style="font-size:.75rem;color:var(--text3)"></span>
+        </div>
+        <div class="preview-area" id="previewArea"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ STATUS BAR ═══ -->
+  <div class="statusbar">
+    <span id="statusText">Pret — Utilisez les templates ou ajoutez des sections</span>
+    <span id="statusRight">Auto-save actif</span>
+  </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+<div class="modal-overlay" id="modalTemplates">
+  <div class="modal" style="max-width:900px">
+    <div class="modal-head">
+      <h3>Templates de chanson</h3>
+      <button class="btn tiny" onclick="closeModal('modalTemplates')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text2);margin-bottom:16px;font-size:.85rem">
+        Choisissez un template pour pre-remplir la structure. Ajoutez d'abord vos chanteurs pour les templates multi-voix.
+      </p>
+      <div class="templates-grid" id="templatesGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalHelp">
+  <div class="modal" style="max-width:800px">
+    <div class="modal-head">
+      <h3>Guide Suno Song Builder</h3>
+      <button class="btn tiny" onclick="closeModal('modalHelp')">✕</button>
+    </div>
+    <div class="modal-body" id="helpContent" style="font-size:.85rem;line-height:1.7"></div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════ -->
+<script>
+// ─── DATA ──────────────────────────────────
+const SECTION_TYPES = [
+  {id:'INTRO',label:'Intro',icon:'🎬'},
+  {id:'VERSE',label:'Couplet',icon:'📝'},
+  {id:'PRE-CHORUS',label:'Pre-Refrain',icon:'🔥'},
+  {id:'CHORUS',label:'Refrain',icon:'🎵'},
+  {id:'POST-CHORUS',label:'Post-Refrain',icon:'✨'},
+  {id:'BRIDGE',label:'Pont',icon:'🌉'},
+  {id:'HOOK',label:'Hook',icon:'🪝'},
+  {id:'INSTRUMENTAL',label:'Instrumental',icon:'🎸'},
+  {id:'INTERLUDE',label:'Interlude',icon:'🎹'},
+  {id:'BREAK',label:'Break',icon:'⏸️'},
+  {id:'DROP',label:'Drop',icon:'💥'},
+  {id:'OUTRO',label:'Outro',icon:'🏁'},
+  {id:'END',label:'Fin',icon:'⏹️'},
+  {id:'ROUND FINAL',label:'Round Final',icon:'🏆'}
+];
+
+const MOOD_TAGS = [
+  'Explosion sonore','Montee en puissance','Chute brutale du rythme',
+  'Changement de rythme','Tempo survitamine','Ambiance oppressante',
+  'Plus intimiste','Doux et melodique','Crescendo dramatique',
+  'Basse vrombissante','Mur de guitares','Batterie martelante',
+  'Synthe grave','Piano melancolique','Acoustique calme',
+  'Fade Out','Building intensity','Energetic','Aggressive',
+  'Slow Down','Epic orchestral swell','Guitare acoustique',
+  'Cordes emotionnelles','Chorale en arriere-plan'
+];
+
+const PERFORMANCE_TAGS = [
+  '','Spoken Word','Whisper','Rap','Harmony','Choir',
+  'Background Vocals','Ad-lib','Call and Response','Duet',
+  'A cappella','Belting','Falsetto','Growl','Scream','Humming'
+];
+
+const SINGER_COLORS = [
+  '#60a5fa','#f472b6','#a78bfa','#34d399','#fb923c',
+  '#f87171','#38bdf8','#c084fc','#fbbf24','#22d3ee',
+  '#e879f9','#4ade80','#fb7185','#a3e635','#818cf8'
+];
+
+// ─── STATE ─────────────────────────────────
+let project = {
+  title: 'Ma Chanson',
+  style: '',
+  singers: [],
+  sections: [],
+  globalNote: ''
+};
+let selectedSingerId = null;
+let editingSingerId = null; // null=new, else=editing
+let selectedSectionId = null;
+let undoStack = [];
+let redoStack = [];
+let dragSrcId = null;
+
+// ─── INIT ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadAutoSave();
+  buildQuickButtons();
+  buildTemplatesGrid();
+  renderAll();
+  setupKeyboard();
+
+  document.getElementById('projectTitle').addEventListener('input', e => {
+    project.title = e.target.value;
+    autoSave();
+  });
+  document.getElementById('projectStyle').addEventListener('input', e => {
+    project.style = e.target.value;
+    autoSave();
+  });
+});
+
+function setupKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveProject(); }
+    if (e.ctrlKey && e.key === 'e') { e.preventDefault(); exportSuno(); }
+    if (e.ctrlKey && e.key === 'o') { e.preventDefault(); importProject(); }
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+    if (e.key === 'Delete' && selectedSectionId && !isEditorFocused()) {
+      e.preventDefault(); deleteSection(selectedSectionId);
+    }
+  });
+}
+
+function isEditorFocused() {
+  const el = document.activeElement;
+  return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+}
+
+// ─── UNDO / REDO ───────────────────────────
+function pushUndo() {
+  undoStack.push(JSON.stringify(project));
+  if (undoStack.length > 50) undoStack.shift();
+  redoStack = [];
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push(JSON.stringify(project));
+  project = JSON.parse(undoStack.pop());
+  syncInputs();
+  renderAll();
+  toast('Annulation', 'info');
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push(JSON.stringify(project));
+  project = JSON.parse(redoStack.pop());
+  syncInputs();
+  renderAll();
+  toast('Retablissement', 'info');
+}
+
+function syncInputs() {
+  document.getElementById('projectTitle').value = project.title;
+  document.getElementById('projectStyle').value = project.style;
+}
+
+// ─── UTILS ─────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function singerById(id) { return project.singers.find(s => s.id === id); }
+function sectionById(id) { return project.sections.find(s => s.id === id); }
+function singerColor(singerId) {
+  const idx = project.singers.findIndex(s => s.id === singerId);
+  return idx >= 0 ? SINGER_COLORS[idx % SINGER_COLORS.length] : '#666';
+}
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+function sectionTypeInfo(id) { return SECTION_TYPES.find(t => t.id === id) || {id,label:id,icon:'📄'}; }
+
+// ─── TOAST ─────────────────────────────────
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ─── STATUS ────────────────────────────────
+function setStatus(msg) {
+  document.getElementById('statusText').textContent = msg;
+}
+
+// ─── AUTO-SAVE ─────────────────────────────
+function autoSave() {
+  try { localStorage.setItem('suno_builder_project', JSON.stringify(project)); }
+  catch(e) {}
+}
+
+function loadAutoSave() {
+  try {
+    const d = localStorage.getItem('suno_builder_project');
+    if (d) {
+      project = JSON.parse(d);
+      syncInputs();
+    }
+  } catch(e) {}
+}
+
+// ─── RENDER ALL ────────────────────────────
+function renderAll() {
+  renderSingers();
+  renderSections();
+  refreshPreview();
+  autoSave();
+}
+
+// ═══════════════════════════════════════════
+// SINGERS
+// ═══════════════════════════════════════════
+function renderSingers() {
+  const el = document.getElementById('singersList');
+  document.getElementById('singerCount').textContent = project.singers.length;
+
+  if (!project.singers.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:.8rem">' +
+      'Aucun chanteur<br><br>Ajoutez des chanteurs pour les<br>assigner aux sections</div>';
+    return;
+  }
+
+  el.innerHTML = project.singers.map((s, i) => {
+    const color = SINGER_COLORS[i % SINGER_COLORS.length];
+    const active = selectedSingerId === s.id ? ' active' : '';
+    const phonLabel = s.phonetic ? `<br>Suno: "${escHtml(s.phonetic)}"` : '';
+    const descLabel = s.description ? ` — ${escHtml(s.description)}` : '';
+    return `<div class="singer-card${active}" style="border-left-color:${color}"
+                 onclick="selectSinger('${s.id}')" ondblclick="editSinger('${s.id}')">
+      <div class="singer-name" style="color:${color}">${escHtml(s.name)}</div>
+      <div class="singer-meta">${s.voice_type === 'male' ? '♂ Homme' : '♀ Femme'}${descLabel}${phonLabel}</div>
+      <span class="singer-badge ${s.voice_type}">${s.voice_type === 'male' ? 'M' : 'F'}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectSinger(id) {
+  selectedSingerId = id;
+  editSinger(id);
+  renderSingers();
+}
+
+function addSinger() {
+  editingSingerId = null;
+  document.getElementById('sfName').value = '';
+  document.querySelector('input[name=sfType][value=male]').checked = true;
+  document.getElementById('sfPhonetic').value = '';
+  document.getElementById('sfDesc').value = '';
+  document.getElementById('singerFormTitle').textContent = 'Nouveau chanteur';
+  document.getElementById('singerForm').style.display = '';
+  document.getElementById('sfName').focus();
+}
+
+function editSinger(id) {
+  const s = singerById(id);
+  if (!s) return;
+  editingSingerId = id;
+  document.getElementById('sfName').value = s.name;
+  document.querySelector(`input[name=sfType][value=${s.voice_type}]`).checked = true;
+  document.getElementById('sfPhonetic').value = s.phonetic;
+  document.getElementById('sfDesc').value = s.description;
+  document.getElementById('singerFormTitle').textContent = `Modifier: ${s.name}`;
+  document.getElementById('singerForm').style.display = '';
+}
+
+function saveSinger() {
+  const name = document.getElementById('sfName').value.trim();
+  if (!name) { toast('Le nom est obligatoire', 'error'); return; }
+
+  // Check duplicate before mutating the undo stack.
+  if (!editingSingerId && project.singers.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+    toast(`"${name}" existe deja`, 'error');
+    return;
+  }
+
+  const vtype = document.querySelector('input[name=sfType]:checked').value;
+  const phonetic = document.getElementById('sfPhonetic').value.trim();
+  const desc = document.getElementById('sfDesc').value.trim();
+
+  pushUndo();
+
+  if (editingSingerId) {
+    const s = singerById(editingSingerId);
+    if (s) {
+      s.name = name; s.voice_type = vtype;
+      s.phonetic = phonetic; s.description = desc;
+      toast(`Chanteur "${name}" mis a jour`);
+    }
+  } else {
+    project.singers.push({ id: uid(), name, voice_type: vtype, phonetic, description: desc });
+    toast(`Chanteur "${name}" ajoute`);
+  }
+
+  document.getElementById('singerForm').style.display = 'none';
+  editingSingerId = null;
+  renderAll();
+}
+
+function cancelSinger() {
+  document.getElementById('singerForm').style.display = 'none';
+  editingSingerId = null;
+}
+
+function deleteSinger(id) {
+  const s = singerById(id);
+  if (!s) return;
+  if (!confirm(`Supprimer le chanteur "${s.name}" ?`)) return;
+  pushUndo();
+  project.sections.forEach(sec => { if (sec.assignment === id) sec.assignment = 'all'; });
+  project.singers = project.singers.filter(x => x.id !== id);
+  if (selectedSingerId === id) selectedSingerId = null;
+  if (editingSingerId === id) cancelSinger();
+  renderAll();
+  toast(`Chanteur "${s.name}" supprime`);
+}
+
+// ═══════════════════════════════════════════
+// SECTIONS
+// ═══════════════════════════════════════════
+function renderSections() {
+  const el = document.getElementById('sectionsArea');
+
+  if (!project.sections.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="icon">🎵</div>
+      <h3>Aucune section</h3>
+      <p>Commencez par ajouter des sections avec les boutons ci-dessus,
+         ou utilisez un template depuis le menu.</p>
+      <button class="btn primary" onclick="showTemplates()">Choisir un template</button>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = project.sections.map(sec => {
+    const info = sectionTypeInfo(sec.sectionType);
+    const active = selectedSectionId === sec.id ? ' active' : '';
+    const cssClass = 'stype-' + sec.sectionType.replace(/ /g, '-');
+    const num = sec.number ? ` ${sec.number}` : '';
+
+    // Assignment label
+    let assignHtml = '';
+    if (sec.assignment === 'all') {
+      assignHtml = '<span class="section-assign" style="background:rgba(255,255,255,.08);color:var(--text2)">Tous</span>';
+    } else if (sec.assignment === 'instrumental') {
+      assignHtml = '<span class="section-assign" style="background:rgba(6,182,212,.12);color:var(--cyan)">Instrumental</span>';
+    } else if (sec.assignment === 'public') {
+      assignHtml = '<span class="section-assign" style="background:rgba(249,115,22,.12);color:var(--orange)">Public</span>';
+    } else {
+      const singer = singerById(sec.assignment);
+      if (singer) {
+        const c = singerColor(sec.assignment);
+        assignHtml = `<span class="section-assign" style="background:${c}22;color:${c}">${escHtml(singer.name)}</span>`;
+      }
+    }
+
+    // Mood pills
+    const moodHtml = (sec.moodTags||[]).map(t =>
+      `<span class="pill">${escHtml(t)}</span>`).join('');
+
+    // Performance
+    const perfHtml = sec.performanceTag ?
+      `<span class="section-perf-pill">${escHtml(sec.performanceTag)}</span>` : '';
+
+    // Lyrics preview
+    const preview = sec.lyrics ? escHtml(sec.lyrics.split('\n')[0].slice(0, 60)) +
+      (sec.lyrics.length > 60 ? '...' : '') : '';
+
+    return `<div class="section-card${active}" id="sec-${sec.id}"
+                 draggable="true"
+                 ondragstart="onDragStart(event,'${sec.id}')"
+                 ondragover="onDragOver(event,'${sec.id}')"
+                 ondragleave="onDragLeave(event)"
+                 ondrop="onDrop(event,'${sec.id}')"
+                 ondragend="onDragEnd(event)"
+                 style="border-left-color:${sec.assignment !== 'all' && sec.assignment !== 'instrumental' && sec.assignment !== 'public' ? singerColor(sec.assignment) : 'var(--bg4)'}">
+      <div class="section-head" onclick="selectSection('${sec.id}')">
+        <span class="section-drag-handle">⠿</span>
+        <span class="section-type-badge ${cssClass}">${info.icon} ${info.label}${num}</span>
+        ${assignHtml}
+        <span class="section-mood-pills">${moodHtml}${perfHtml}</span>
+        <span class="section-actions">
+          <button class="btn tiny" onclick="event.stopPropagation();duplicateSection('${sec.id}')" title="Dupliquer">⧉</button>
+          <button class="btn tiny danger" onclick="event.stopPropagation();deleteSection('${sec.id}')" title="Supprimer">✕</button>
+        </span>
+      </div>
+      ${preview ? `<div class="section-preview" onclick="selectSection('${sec.id}')">${preview}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectSection(id) {
+  selectedSectionId = id;
+  renderSections();
+  loadEditor(id);
+  switchTab('editor');
+}
+
+function addSection(type, afterId) {
+  pushUndo();
+  const autoNum = type === 'VERSE' || type === 'CHORUS' || type === 'HOOK' ?
+    project.sections.filter(s => s.sectionType === type).length + 1 : null;
+
+  const sec = {
+    id: uid(), sectionType: type, number: autoNum,
+    assignment: type === 'INTRO' || type === 'OUTRO' || type === 'INSTRUMENTAL' || type === 'INTERLUDE' || type === 'BREAK' || type === 'DROP' ? 'instrumental' : 'all',
+    lyrics: '', moodTags: [], performanceTag: '', spokenLine: ''
+  };
+
+  if (afterId) {
+    const idx = project.sections.findIndex(s => s.id === afterId);
+    project.sections.splice(idx + 1, 0, sec);
+  } else if (selectedSectionId) {
+    const idx = project.sections.findIndex(s => s.id === selectedSectionId);
+    project.sections.splice(idx + 1, 0, sec);
+  } else {
+    project.sections.push(sec);
+  }
+
+  selectedSectionId = sec.id;
+  renderAll();
+  loadEditor(sec.id);
+  switchTab('editor');
+  setStatus(`Section "${sectionTypeInfo(type).label}" ajoutee`);
+}
+
+function duplicateSection(id) {
+  const orig = sectionById(id);
+  if (!orig) return;
+  pushUndo();
+  const dup = JSON.parse(JSON.stringify(orig));
+  dup.id = uid();
+  if (dup.number) dup.number++;
+  const idx = project.sections.findIndex(s => s.id === id);
+  project.sections.splice(idx + 1, 0, dup);
+  selectedSectionId = dup.id;
+  renderAll();
+  loadEditor(dup.id);
+  toast('Section dupliquee');
+}
+
+function deleteSection(id) {
+  pushUndo();
+  const idx = project.sections.findIndex(s => s.id === id);
+  project.sections.splice(idx, 1);
+  if (selectedSectionId === id) {
+    selectedSectionId = project.sections.length ?
+      project.sections[Math.min(idx, project.sections.length - 1)].id : null;
+  }
+  renderAll();
+  if (selectedSectionId) loadEditor(selectedSectionId);
+  else document.getElementById('editorArea').innerHTML =
+    '<div class="editor-placeholder">Selectionnez une section pour l\'editer</div>';
+  toast('Section supprimee');
+}
+
+function clearAllSections() {
+  if (!project.sections.length) return;
+  if (!confirm('Supprimer toutes les sections ?')) return;
+  pushUndo();
+  project.sections = [];
+  selectedSectionId = null;
+  renderAll();
+  toast('Toutes les sections supprimees');
+}
+
+function autoNumber() {
+  pushUndo();
+  const counts = {};
+  project.sections.forEach(sec => {
+    if (['VERSE','CHORUS','HOOK','BRIDGE'].includes(sec.sectionType)) {
+      counts[sec.sectionType] = (counts[sec.sectionType] || 0) + 1;
+      sec.number = counts[sec.sectionType];
+    } else {
+      sec.number = null;
+    }
+  });
+  renderAll();
+  if (selectedSectionId) loadEditor(selectedSectionId);
+  toast('Numerotation mise a jour');
+}
+
+// ─── DRAG & DROP SECTIONS ──────────────────
+function onDragStart(e, id) {
+  dragSrcId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = document.getElementById('sec-' + id);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function onDragOver(e, id) {
+  if (id === dragSrcId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  // Remove all drag-over, add to current
+  document.querySelectorAll('.section-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  document.getElementById('sec-' + id)?.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e, targetId) {
+  e.preventDefault();
+  document.querySelectorAll('.section-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  if (!dragSrcId || dragSrcId === targetId) return;
+
+  pushUndo();
+  const fromIdx = project.sections.findIndex(s => s.id === dragSrcId);
+  const toIdx = project.sections.findIndex(s => s.id === targetId);
+  const [moved] = project.sections.splice(fromIdx, 1);
+  project.sections.splice(toIdx, 0, moved);
+  renderAll();
+  toast('Section deplacee');
+}
+
+function onDragEnd(e) {
+  document.querySelectorAll('.section-card.dragging').forEach(el => el.classList.remove('dragging'));
+  document.querySelectorAll('.section-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  dragSrcId = null;
+}
+
+// ═══════════════════════════════════════════
+// SECTION EDITOR
+// ═══════════════════════════════════════════
+function loadEditor(id) {
+  const sec = sectionById(id);
+  if (!sec) return;
+  const info = sectionTypeInfo(sec.sectionType);
+  const el = document.getElementById('editorArea');
+
+  // Singer options
+  const singerOpts = [
+    '<option value="all">Tous les chanteurs</option>',
+    '<option value="instrumental">Instrumental (pas de voix)</option>',
+    '<option value="public">Public / Foule</option>',
+    '<option value="mixed">Mixte (alternance)</option>',
+    ...project.singers.map((s, i) => {
+      const c = SINGER_COLORS[i % SINGER_COLORS.length];
+      return `<option value="${s.id}" ${sec.assignment === s.id ? 'selected' : ''}>${s.voice_type === 'male' ? '♂' : '♀'} ${escHtml(s.name)}</option>`;
+    })
+  ].join('');
+
+  // Section type options
+  const typeOpts = SECTION_TYPES.map(t =>
+    `<option value="${t.id}" ${sec.sectionType === t.id ? 'selected' : ''}>${t.icon} ${t.label}</option>`
+  ).join('');
+
+  // Performance options
+  const perfOpts = PERFORMANCE_TAGS.map(t =>
+    `<option value="${t}" ${sec.performanceTag === t ? 'selected' : ''}>${t || '(aucun)'}</option>`
+  ).join('');
+
+  // Mood tags
+  const moodOpts = MOOD_TAGS.map(t => `<option value="${t}">${t}</option>`).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <span class="section-type-badge stype-${sec.sectionType.replace(/ /g,'-')}" style="font-size:.9rem;padding:5px 14px">
+        ${info.icon} ${info.label}${sec.number ? ' '+sec.number : ''}</span>
+      <button class="btn tiny" onclick="addSection('${sec.sectionType}','${sec.id}')" title="Inserer apres">+ Inserer apres</button>
+      <span style="flex:1"></span>
+      ${project.singers.some(s=>s.id===sec.assignment) ?
+        `<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${singerColor(sec.assignment)}"></span>` : ''}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 80px;gap:10px">
+      <div class="form-row">
+        <label>Type de section</label>
+        <select onchange="updateSec('${id}','sectionType',this.value)">${typeOpts}</select>
+      </div>
+      <div class="form-row">
+        <label>Numero</label>
+        <input type="number" min="1" max="20" value="${sec.number||''}"
+               onchange="updateSec('${id}','number',this.value?parseInt(this.value):null)"
+               placeholder="-">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Assigne a</label>
+      <select onchange="updateSec('${id}','assignment',this.value)">
+        ${singerOpts.replace(`value="${sec.assignment}"`, `value="${sec.assignment}" selected`)}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Performance vocale</label>
+      <select onchange="updateSec('${id}','performanceTag',this.value)">${perfOpts}</select>
+    </div>
+
+    <div class="form-row">
+      <label>Tags d'ambiance <span style="color:var(--text3)">(cliquez pour retirer)</span></label>
+      <div style="display:flex;gap:6px">
+        <select id="moodSelect" style="flex:1"><option value="">-- Ajouter --</option>${moodOpts}</select>
+        <button class="btn small" onclick="addMoodTag('${id}')">+ Ajouter</button>
+      </div>
+      <div class="mood-tags-display" id="moodDisplay">
+        ${(sec.moodTags||[]).map(t =>
+          `<span class="pill" onclick="removeMoodTag('${id}','${escHtml(t)}')">${escHtml(t)}</span>`
+        ).join('')}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Ligne parlee (avant les paroles)</label>
+      <input type="text" value="${escHtml(sec.spokenLine||'')}"
+             onchange="updateSec('${id}','spokenLine',this.value)"
+             placeholder='Ex: "On arrive..." (sera entre guillemets)'>
+    </div>
+
+    <div class="form-row">
+      <label>Paroles</label>
+      <textarea id="lyricsArea" rows="8"
+                oninput="updateSec('${id}','lyrics',this.value)"
+                placeholder="Ecrivez les paroles ici...&#10;&#10;Chaque ligne = une ligne chantee&#10;Les lignes vides sont conservees">${escHtml(sec.lyrics||'')}</textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn small" onclick="navigateSection(-1)">← Precedente</button>
+      <button class="btn small" onclick="navigateSection(1)">Suivante →</button>
+      <span style="flex:1"></span>
+      <button class="btn small danger" onclick="deleteSection('${id}')">Supprimer</button>
+    </div>
+  `;
+}
+
+function updateSec(id, field, value) {
+  const sec = sectionById(id);
+  if (!sec) return;
+
+  // Push undo only on meaningful changes (not on every keystroke for lyrics)
+  if (field !== 'lyrics') pushUndo();
+
+  sec[field] = value;
+  renderSections();
+  refreshPreview();
+  autoSave();
+
+  // Refresh editor header if type/number changed
+  if (field === 'sectionType' || field === 'number' || field === 'assignment') {
+    loadEditor(id);
+  }
+}
+
+function addMoodTag(secId) {
+  const sel = document.getElementById('moodSelect');
+  const val = sel.value;
+  if (!val) return;
+  const sec = sectionById(secId);
+  if (!sec) return;
+  if (!sec.moodTags) sec.moodTags = [];
+  if (!sec.moodTags.includes(val)) {
+    pushUndo();
+    sec.moodTags.push(val);
+    loadEditor(secId);
+    renderSections();
+    refreshPreview();
+    autoSave();
+  }
+  sel.value = '';
+}
+
+function removeMoodTag(secId, tag) {
+  const sec = sectionById(secId);
+  if (!sec || !sec.moodTags) return;
+  pushUndo();
+  sec.moodTags = sec.moodTags.filter(t => t !== tag);
+  loadEditor(secId);
+  renderSections();
+  refreshPreview();
+  autoSave();
+}
+
+function navigateSection(dir) {
+  if (!selectedSectionId) return;
+  const idx = project.sections.findIndex(s => s.id === selectedSectionId);
+  const next = idx + dir;
+  if (next >= 0 && next < project.sections.length) {
+    selectedSectionId = project.sections[next].id;
+    renderSections();
+    loadEditor(selectedSectionId);
+    document.getElementById('sec-' + selectedSectionId)?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+}
+
+// ═══════════════════════════════════════════
+// PREVIEW
+// ═══════════════════════════════════════════
+function renderSunoText() {
+  return renderSunoTextWithMode(getSelectedExportMode());
+}
+
+function getSelectedExportMode() {
+  const modeEl = document.getElementById('exportMode');
+  return modeEl ? modeEl.value : 'balanced';
+}
+
+function normalizeMoodTag(tag, mode='balanced') {
+  if (mode !== 'strict') return tag;
+  const m = {
+    'Explosion sonore':'Big Chorus Energy',
+    'Montee en puissance':'Build Up',
+    'Chute brutale du rythme':'Beat Switch',
+    'Changement de rythme':'Rhythm Change',
+    'Tempo survitamine':'High Energy',
+    'Ambiance oppressante':'Dark Atmosphere',
+    'Plus intimiste':'Intimate',
+    'Doux et melodique':'Soft Melodic',
+    'Crescendo dramatique':'Dramatic Crescendo',
+    'Basse vrombissante':'Heavy Bass',
+    'Mur de guitares':'Wall Of Guitars',
+    'Batterie martelante':'Heavy Drums',
+    'Synthe grave':'Dark Synth',
+    'Piano melancolique':'Melancholic Piano',
+    'Acoustique calme':'Calm Acoustic',
+    'Fade Out':'Fade Out',
+    'Building intensity':'Build Up',
+    'Energetic':'High Energy',
+    'Aggressive':'Aggressive',
+    'Slow Down':'Slow Down',
+    'Epic orchestral swell':'Epic Orchestral Swell',
+    'Guitare acoustique':'Acoustic Guitar',
+    'Cordes emotionnelles':'Emotional Strings',
+    'Chorale en arriere-plan':'Background Choir'
+  };
+  return m[tag] || tag;
+}
+
+function renderSunoTextWithMode(mode='balanced') {
+  const lines = [];
+  const note = project.globalNote || generateGlobalNote();
+  if (note) { lines.push(note); lines.push(''); }
+
+  if (project.style && mode === 'strict') {
+    lines.push(`[STYLE: ${project.style}]`);
+    lines.push('');
+  }
+
+  for (const sec of project.sections) {
+    for (const tag of (sec.moodTags||[])) {
+      lines.push(`[${normalizeMoodTag(tag, mode)}]`);
+    }
+    lines.push(buildHeader(sec, mode));
+    if (sec.spokenLine) {
+      lines.push(`[Voix : "${sec.spokenLine}"]`);
+      lines.push('');
+    }
+    if (sec.performanceTag && sec.assignment !== 'instrumental') {
+      lines.push(`[${sec.performanceTag}]`);
+    }
+    if (sec.lyrics && sec.lyrics.trim()) {
+      lines.push(sec.lyrics.trim());
+    }
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+function generateGlobalNote() {
+  if (!project.singers.length) return '';
+  const m = project.singers.filter(s => s.voice_type === 'male').length;
+  const f = project.singers.filter(s => s.voice_type === 'female').length;
+  const parts = [`${project.singers.length} singers`];
+  if (m) parts.push(`${m} male${m>1?'s':''}`);
+  if (f) parts.push(`${f} female${f>1?'s':''}`);
+  return '[' + parts.join(', ') + ']';
+}
+
+function buildHeader(sec, mode='balanced') {
+  let label = sec.sectionType;
+  if (sec.number) label += ` ${sec.number}`;
+
+  if (sec.assignment === 'instrumental') {
+    if (mode === 'strict') return `[${label} - INSTRUMENTAL ONLY]`;
+    return `[${label} - instrumental]`;
+  }
+
+  if (sec.assignment === 'mixed') {
+    return mode === 'strict' ? `[${label} - DUET]` : `[${label} - mixed voices]`;
+  }
+
+  if (sec.assignment === 'all') {
+    return `[${label}]`;
+  } else if (sec.assignment === 'public') {
+    return mode === 'strict' ? `[${label} - CROWD CHANT]` : `[${label} - PUBLIC]`;
+  } else {
+    const singer = singerById(sec.assignment);
+    if (singer) {
+      const disp = singer.phonetic || singer.name;
+      return `[${label} - ${disp} (${singer.voice_type})]`;
+    }
+    return `[${label}]`;
+  }
+}
+
+function refreshPreview() {
+  const raw = renderSunoTextWithMode(getSelectedExportMode());
+  const el = document.getElementById('previewArea');
+
+  // Syntax highlighting
+  const highlighted = raw.split('\n').map(line => {
+    if (line.startsWith('[') && line.endsWith(']')) {
+      const inner = line.slice(1, -1);
+      const sectionKws = ['VERSE','CHORUS','BRIDGE','INTRO','OUTRO','HOOK','BREAK',
+        'PRE-CHORUS','POST-CHORUS','INTERLUDE','ROUND','END','DROP','INSTRUMENTAL'];
+      if (sectionKws.some(kw => inner.toUpperCase().includes(kw))) {
+        if (inner.includes(' - ')) {
+          const parts = inner.split(' - ');
+          return `<span class="tag">[${escHtml(parts[0])} - </span><span class="singer-tag">${escHtml(parts.slice(1).join(' - '))}</span><span class="tag">]</span>`;
+        }
+        return `<span class="tag">${escHtml(line)}</span>`;
+      }
+      if (MOOD_TAGS.some(m => inner.includes(m)) || inner.includes('Voix :')) {
+        return `<span class="mood">${escHtml(line)}</span>`;
+      }
+      if (PERFORMANCE_TAGS.some(p => p && inner === p)) {
+        return `<span class="perf">${escHtml(line)}</span>`;
+      }
+      return `<span class="singer-tag">${escHtml(line)}</span>`;
+    }
+    if (line.startsWith('[')) {
+      return `<span class="global-note">${escHtml(line)}</span>`;
+    }
+    return line ? `<span class="lyric">${escHtml(line)}</span>` : '';
+  }).join('\n');
+
+  el.innerHTML = highlighted;
+
+  // Stats
+  const words = raw.split(/\s+/).filter(w => w && !w.startsWith('[')).length;
+  const chars = raw.length;
+  document.getElementById('previewStats').textContent =
+    `${project.sections.length} sections | ~${words} mots | ${chars} caracteres`;
+}
+
+function copyPreview() {
+  const text = renderSunoTextWithMode(getSelectedExportMode());
+  navigator.clipboard.writeText(text).then(() => {
+    toast('Copie dans le presse-papiers !');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Copie dans le presse-papiers !');
+  });
+}
+
+function copyStrictPreview() {
+  const text = renderSunoTextWithMode('strict');
+  navigator.clipboard.writeText(text).then(() => {
+    toast('Copie stricte Suno reussie');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Copie stricte Suno reussie');
+  });
+}
+
+function runCompatibilityCheck() {
+  const issues = [];
+
+  if (!project.sections.length) {
+    issues.push('Aucune section dans le projet.');
+  }
+
+  project.sections.forEach((sec, idx) => {
+    const where = `${idx + 1}. ${sec.sectionType}${sec.number ? ' ' + sec.number : ''}`;
+
+    if (sec.assignment === 'instrumental') {
+      if (sec.lyrics && sec.lyrics.trim()) issues.push(`${where}: section instrumentale avec paroles.`);
+      if (sec.performanceTag) issues.push(`${where}: section instrumentale avec performance vocale "${sec.performanceTag}".`);
+    }
+
+    if (sec.assignment !== 'instrumental' && (!sec.lyrics || !sec.lyrics.trim())) {
+      issues.push(`${where}: section vocale sans paroles.`);
+    }
+
+    if (!['all','instrumental','public','mixed'].includes(sec.assignment) && !singerById(sec.assignment)) {
+      issues.push(`${where}: chanteur assigne introuvable (ID supprime).`);
+    }
+  });
+
+  const mode = getSelectedExportMode();
+  if (mode === 'balanced') {
+    issues.push('Mode Equilibre: certains tags creatifs peuvent etre ignores par Suno.');
+  }
+
+  if (!issues.length) {
+    toast('Diagnostic OK: structure propre pour Suno');
+    setStatus('Diagnostic compatibilite: aucun probleme detecte');
+    return;
+  }
+
+  const report = ['Diagnostic compatibilite Suno', ''].concat(issues).join('\n- ');
+  alert(report);
+  setStatus(`Diagnostic: ${issues.length} point(s) a verifier`);
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  document.getElementById('content' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  if (tab === 'preview') refreshPreview();
+}
+
+// ═══════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════
+const TEMPLATES = {
+  'Pop — Verse/Chorus': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:[]},
+    {t:'VERSE',n:2,a:'solo',m:[]},{t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:[]},{t:'BRIDGE',a:'solo',m:['Plus intimiste']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},{t:'OUTRO',a:'instrumental',m:['Fade Out']}
+  ]},
+  'Pop — avec Post-Chorus': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:[]},
+    {t:'POST-CHORUS',a:'all',m:['Energetic']},{t:'VERSE',n:2,a:'solo',m:[]},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:[]},
+    {t:'POST-CHORUS',a:'all',m:['Energetic']},{t:'BRIDGE',a:'solo',m:['Plus intimiste']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},{t:'OUTRO',a:'instrumental',m:['Fade Out']}
+  ]},
+  'Rock — Energie crescendo': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Batterie martelante']},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'CHORUS',a:'all',m:['Mur de guitares']},{t:'VERSE',n:2,a:'solo',m:[]},
+    {t:'CHORUS',a:'all',m:['Mur de guitares']},{t:'BRIDGE',a:'solo',m:['Chute brutale du rythme']},
+    {t:'INSTRUMENTAL',a:'instrumental',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},{t:'OUTRO',a:'all',m:[]}
+  ]},
+  'Ballade — Lente et emotive': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Piano melancolique']},{t:'VERSE',n:1,a:'solo',m:['Doux et melodique']},
+    {t:'VERSE',n:2,a:'solo',m:[]},{t:'CHORUS',a:'all',m:['Montee en puissance']},
+    {t:'INTERLUDE',a:'instrumental',m:['Plus intimiste']},{t:'VERSE',n:3,a:'solo',m:[]},
+    {t:'CHORUS',a:'all',m:['Crescendo dramatique']},{t:'BRIDGE',a:'solo',m:['Plus intimiste']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},{t:'OUTRO',a:'all',m:['Fade Out']}
+  ]},
+  'Rap / Hip-Hop — 3 couplets': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'singer_0',m:[],p:'Rap'},
+    {t:'HOOK',a:'all',m:[]},{t:'VERSE',n:2,a:'singer_1',m:[],p:'Rap'},
+    {t:'HOOK',a:'all',m:[]},{t:'BRIDGE',a:'solo',m:['Changement de rythme']},
+    {t:'VERSE',n:3,a:'singer_2',m:[],p:'Rap'},{t:'HOOK',a:'all',m:[]},
+    {t:'OUTRO',a:'instrumental',m:['Fade Out']}
+  ]},
+  'R&B — Smooth': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Doux et melodique']},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:[]},
+    {t:'VERSE',n:2,a:'solo',m:[]},{t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:[]},{t:'BRIDGE',a:'solo',m:['Plus intimiste'],p:'Falsetto'},
+    {t:'CHORUS',a:'all',m:['Crescendo dramatique']},{t:'OUTRO',a:'all',m:['Fade Out']}
+  ]},
+  'EDM / Electro — Drop': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Synthe grave']},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'PRE-CHORUS',a:'all',m:['Building intensity']},
+    {t:'DROP',a:'instrumental',m:['Explosion sonore','Tempo survitamine']},
+    {t:'VERSE',n:2,a:'solo',m:[]},{t:'PRE-CHORUS',a:'all',m:['Building intensity']},
+    {t:'DROP',a:'instrumental',m:['Explosion sonore','Tempo survitamine']},
+    {t:'BRIDGE',a:'solo',m:['Chute brutale du rythme','Plus intimiste']},
+    {t:'DROP',a:'instrumental',m:['Explosion sonore']},{t:'OUTRO',a:'instrumental',m:['Fade Out']}
+  ]},
+  'Metal — Agressif': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Batterie martelante','Mur de guitares']},
+    {t:'VERSE',n:1,a:'solo',m:['Aggressive'],p:'Growl'},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:['Explosion sonore']},
+    {t:'VERSE',n:2,a:'solo',m:['Aggressive'],p:'Growl'},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:['Explosion sonore']},
+    {t:'BRIDGE',a:'instrumental',m:['Chute brutale du rythme']},
+    {t:'INSTRUMENTAL',a:'instrumental',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore'],p:'Scream'},{t:'OUTRO',a:'instrumental',m:[]}
+  ]},
+  'Country / Folk': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Acoustique calme']},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'VERSE',n:2,a:'solo',m:[]},{t:'CHORUS',a:'all',m:[]},{t:'VERSE',n:3,a:'solo',m:[]},
+    {t:'CHORUS',a:'all',m:[]},{t:'BRIDGE',a:'solo',m:['Plus intimiste'],p:'Spoken Word'},
+    {t:'CHORUS',a:'all',m:['Montee en puissance']},{t:'OUTRO',a:'instrumental',m:['Acoustique calme','Fade Out']}
+  ]},
+  'Reggaeton / Latin': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Energetic']},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:['Energetic']},
+    {t:'VERSE',n:2,a:'solo',m:[]},{t:'PRE-CHORUS',a:'solo',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:['Energetic']},{t:'BRIDGE',a:'solo',m:['Changement de rythme']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},{t:'OUTRO',a:'instrumental',m:['Fade Out']}
+  ]},
+  'Duo — Homme/Femme': {cat:'Multi-voix',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'singer_0',m:[]},
+    {t:'PRE-CHORUS',a:'all',m:['Montee en puissance']},{t:'CHORUS',a:'all',m:[],p:'Duet'},
+    {t:'VERSE',n:2,a:'singer_1',m:[]},{t:'PRE-CHORUS',a:'all',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:[],p:'Duet'},
+    {t:'BRIDGE',a:'singer_0',m:['Plus intimiste']},{t:'BRIDGE',a:'singer_1',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore'],p:'Duet'},{t:'OUTRO',a:'all',m:['Fade Out'],p:'Harmony'}
+  ]},
+  'Rotation — 3 voix': {cat:'Multi-voix',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'singer_0',m:[]},
+    {t:'PRE-CHORUS',a:'all',m:[]},{t:'CHORUS',a:'all',m:[]},
+    {t:'VERSE',n:2,a:'singer_1',m:[]},{t:'CHORUS',a:'all',m:[]},
+    {t:'BRIDGE',a:'all',m:['Changement de rythme']},{t:'VERSE',n:3,a:'singer_2',m:[]},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},
+    {t:'ROUND FINAL',a:'all',m:['Montee en puissance']},{t:'OUTRO',a:'instrumental',m:[]}
+  ]},
+  'Rotation — 4 voix': {cat:'Multi-voix',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'singer_0',m:[]},
+    {t:'PRE-CHORUS',a:'all',m:[]},{t:'CHORUS',a:'all',m:[]},
+    {t:'VERSE',n:2,a:'singer_1',m:[]},{t:'CHORUS',a:'all',m:[]},
+    {t:'VERSE',n:3,a:'singer_2',m:[]},{t:'CHORUS',a:'all',m:[]},
+    {t:'BRIDGE',a:'all',m:['Chute brutale du rythme']},{t:'VERSE',n:4,a:'singer_3',m:[]},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},
+    {t:'ROUND FINAL',a:'all',m:['Montee en puissance']},{t:'OUTRO',a:'instrumental',m:[]}
+  ]},
+  'Call & Response': {cat:'Multi-voix',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'singer_0',m:[]},
+    {t:'VERSE',n:2,a:'singer_1',m:[],p:'Call and Response'},{t:'CHORUS',a:'all',m:[]},
+    {t:'VERSE',n:3,a:'singer_0',m:[]},
+    {t:'VERSE',n:4,a:'singer_1',m:[],p:'Call and Response'},{t:'CHORUS',a:'all',m:[]},
+    {t:'BRIDGE',a:'all',m:['Plus intimiste'],p:'Harmony'},
+    {t:'CHORUS',a:'all',m:['Explosion sonore']},{t:'OUTRO',a:'all',m:['Fade Out']}
+  ]},
+  'Couplet unique + Refrain': {cat:'Courts',sections:[
+    {t:'INTRO',a:'instrumental',m:[]},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'CHORUS',a:'all',m:[]},{t:'OUTRO',a:'instrumental',m:[]}
+  ]},
+  'Hook repeat (TikTok)': {cat:'Courts',sections:[
+    {t:'HOOK',n:1,a:'all',m:['Energetic']},{t:'VERSE',n:1,a:'solo',m:[]},
+    {t:'HOOK',n:2,a:'all',m:[]},{t:'VERSE',n:2,a:'solo',m:[]},
+    {t:'HOOK',n:3,a:'all',m:['Explosion sonore']}
+  ]},
+  'Spoken Word / Slam': {cat:'Courts',sections:[
+    {t:'INTRO',a:'instrumental',m:['Plus intimiste']},
+    {t:'VERSE',n:1,a:'solo',m:[],p:'Spoken Word'},{t:'INTERLUDE',a:'instrumental',m:[]},
+    {t:'VERSE',n:2,a:'solo',m:[],p:'Spoken Word'},
+    {t:'CHORUS',a:'all',m:['Montee en puissance']},
+    {t:'VERSE',n:3,a:'solo',m:[],p:'Spoken Word'},{t:'OUTRO',a:'all',m:['Fade Out']}
+  ]},
+  'Epic / Cinematique': {cat:'Genres',sections:[
+    {t:'INTRO',a:'instrumental',m:['Epic orchestral swell']},
+    {t:'VERSE',n:1,a:'solo',m:['Doux et melodique']},
+    {t:'VERSE',n:2,a:'solo',m:['Montee en puissance']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore'],p:'Choir'},
+    {t:'INTERLUDE',a:'instrumental',m:['Plus intimiste','Cordes emotionnelles']},
+    {t:'VERSE',n:3,a:'solo',m:['Crescendo dramatique']},
+    {t:'CHORUS',a:'all',m:['Explosion sonore'],p:'Choir'},
+    {t:'BRIDGE',a:'solo',m:['Chute brutale du rythme']},
+    {t:'CHORUS',a:'all',m:['Epic orchestral swell','Explosion sonore']},
+    {t:'OUTRO',a:'instrumental',m:['Fade Out']}
+  ]}
+};
+
+function buildTemplatesGrid() {
+  const el = document.getElementById('templatesGrid');
+  const cats = {};
+  for (const [name, tpl] of Object.entries(TEMPLATES)) {
+    const cat = tpl.cat || 'Autre';
+    if (!cats[cat]) cats[cat] = [];
+    cats[cat].push(name);
+  }
+
+  let html = '';
+  for (const [cat, names] of Object.entries(cats)) {
+    html += `<div style="grid-column:1/-1;margin-top:8px"><h4 style="color:var(--accent2);font-size:.85rem;margin-bottom:4px">${escHtml(cat)}</h4></div>`;
+    for (const name of names) {
+      const tpl = TEMPLATES[name];
+      const secList = tpl.sections.map(s => {
+        const info = sectionTypeInfo(s.t);
+        return `${info.icon} ${info.label}${s.n ? ' '+s.n : ''}`;
+      }).join(' → ');
+      html += `<div class="template-card" onclick="applyTemplate('${escHtml(name)}')">
+        <h4>${escHtml(name)}</h4>
+        <div class="tpl-sections">${secList}</div>
+        <span class="tpl-badge">${tpl.sections.length} sections</span>
+      </div>`;
+    }
+  }
+  el.innerHTML = html;
+}
+
+function applyTemplate(name) {
+  const tpl = TEMPLATES[name];
+  if (!tpl) return;
+  if (project.sections.length && !confirm(`Remplacer les sections actuelles par le template "${name}" ?`)) return;
+
+  pushUndo();
+  project.sections = tpl.sections.map(s => {
+    let assign = s.a;
+    if (assign && assign.startsWith('singer_')) {
+      const idx = parseInt(assign.split('_')[1]);
+      assign = idx < project.singers.length ? project.singers[idx].id : 'all';
+    } else if (assign === 'solo') {
+      assign = project.singers.length ? project.singers[0].id : 'all';
+    }
+    return {
+      id: uid(), sectionType: s.t, number: s.n || null,
+      assignment: assign, lyrics: '', moodTags: [...(s.m||[])],
+      performanceTag: s.p || '', spokenLine: ''
+    };
+  });
+
+  selectedSectionId = project.sections.length ? project.sections[0].id : null;
+  closeModal('modalTemplates');
+  renderAll();
+  if (selectedSectionId) loadEditor(selectedSectionId);
+  toast(`Template "${name}" applique — ${project.sections.length} sections`);
+  setStatus(`Template "${name}" applique`);
+}
+
+function showTemplates() {
+  document.getElementById('modalTemplates').classList.add('open');
+}
+
+// ═══════════════════════════════════════════
+// QUICK SECTIONS
+// ═══════════════════════════════════════════
+function buildQuickButtons() {
+  const el = document.getElementById('quickBtns');
+  el.innerHTML = SECTION_TYPES.map(t =>
+    `<button class="btn tiny" onclick="addSection('${t.id}')"
+             style="font-size:.7rem">${t.icon} ${t.label}</button>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════
+// FILE I/O
+// ═══════════════════════════════════════════
+function saveProject() {
+  const data = JSON.stringify(project, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (project.title || 'projet') + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Projet sauvegarde');
+  setStatus('Projet sauvegarde en JSON');
+}
+
+function importProject() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,.txt';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        if (file.name.endsWith('.json')) {
+          pushUndo();
+          project = JSON.parse(ev.target.result);
+          syncInputs();
+          renderAll();
+          toast(`Projet "${file.name}" charge`);
+        } else {
+          pushUndo();
+          parseTxtToProject(ev.target.result);
+          syncInputs();
+          renderAll();
+          toast(`Fichier "${file.name}" importe — verifiez les sections`);
+        }
+      } catch(err) {
+        toast('Erreur de lecture: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function parseTxtToProject(content) {
+  const newProject = {title: project.title, style: project.style,
+    singers: [], sections: [], globalNote: ''};
+  const lines = content.split('\n');
+  let currentSection = null;
+  let currentLyrics = [];
+  const sectionIds = SECTION_TYPES.map(t => t.id);
+
+  function finishSection() {
+    if (currentSection) {
+      currentSection.lyrics = currentLyrics.join('\n').trim();
+      newProject.sections.push(currentSection);
+      currentLyrics = [];
+    }
+  }
+
+  function findOrCreateSinger(name, fullTag) {
+    const existing = newProject.singers.find(s => s.name.toLowerCase() === name.toLowerCase());
+    if (existing) return existing.id;
+    const vtype = /female|chanteuse|femme/i.test(fullTag) ? 'female' : 'male';
+    const s = {id: uid(), name, voice_type: vtype, phonetic: '', description: ''};
+    newProject.singers.push(s);
+    return s.id;
+  }
+
+  for (const line of lines) {
+    const stripped = line.trim();
+    if (!stripped) {
+      if (currentLyrics.length && currentLyrics[currentLyrics.length-1] !== '')
+        currentLyrics.push('');
+      continue;
+    }
+
+    if (stripped.startsWith('[') && stripped.endsWith(']') &&
+        stripped.toLowerCase().includes('singer') && !currentSection) {
+      newProject.globalNote = stripped;
+      continue;
+    }
+
+    if (stripped.startsWith('[') && stripped.endsWith(']')) {
+      const inner = stripped.slice(1, -1).trim();
+      const upper = inner.toUpperCase();
+      let matched = false;
+
+      for (const stype of sectionIds) {
+        if (upper.startsWith(stype)) {
+          matched = true;
+          finishSection();
+
+          let rest = inner.slice(stype.length).trim();
+          let number = null;
+          let assignment = 'all';
+
+          const parts = rest.split('-');
+          if (parts[0] && parts[0].trim().match(/^\d+$/)) {
+            number = parseInt(parts[0].trim());
+            rest = parts.slice(1).join('-').trim();
+          } else if (parts.length > 1 && !parts[0].trim()) {
+            rest = parts.slice(1).join('-').trim();
+          }
+
+          if (rest) {
+            const namePart = rest.split('(')[0].trim();
+            if (namePart) {
+              const lower = namePart.toLowerCase();
+              if (lower.includes('instrument')) assignment = 'instrumental';
+              else if (lower.includes('public') || lower.includes('crowd')) assignment = 'public';
+              else if (lower.includes('mix')) assignment = 'mixed';
+              else assignment = findOrCreateSinger(namePart, rest);
+            }
+          }
+
+          currentSection = {
+            id: uid(), sectionType: stype, number, assignment,
+            lyrics: '', moodTags: [], performanceTag: '', spokenLine: ''
+          };
+          break;
+        }
+      }
+
+      if (!matched && currentSection) {
+        if (MOOD_TAGS.some(m => inner.includes(m)) ||
+            /Explosion|Montee|Chute|Changement|Batterie|Synthe|Piano|Guitare|Basse|Fade|Building|Energetic|Aggressive|Slow|Epic/i.test(inner)) {
+          currentSection.moodTags.push(inner);
+        } else if (PERFORMANCE_TAGS.includes(inner)) {
+          currentSection.performanceTag = inner;
+        } else {
+          currentLyrics.push(stripped);
+        }
+      }
+      continue;
+    }
+
+    if (stripped) currentLyrics.push(stripped);
+  }
+
+  finishSection();
+  project = newProject;
+}
+
+function exportSuno() {
+  const mode = getSelectedExportMode();
+  const text = renderSunoTextWithMode(mode);
+  const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (project.title || 'chanson') + (mode === 'strict' ? '_suno_strict.txt' : '_suno.txt');
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Exporte pour Suno (${mode === 'strict' ? 'strict' : 'equilibre'})`);
+  setStatus(`Fichier exporte pour Suno (.txt, mode ${mode})`);
+}
+
+// ═══════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// Close modals on overlay click
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
+
+// Close modals on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  }
+});
+
+// ═══════════════════════════════════════════
+// HELP
+// ═══════════════════════════════════════════
+function showHelp() {
+  document.getElementById('helpContent').innerHTML = `
+    <h3 style="margin-bottom:12px;color:var(--accent2)">Guide rapide</h3>
+
+    <h4 style="margin:16px 0 8px;color:var(--yellow)">Raccourcis clavier</h4>
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <tr><td style="padding:4px 12px;color:var(--text2)">Ctrl+S</td><td>Sauvegarder le projet (.json)</td></tr>
+      <tr><td style="padding:4px 12px;color:var(--text2)">Ctrl+O</td><td>Ouvrir un projet</td></tr>
+      <tr><td style="padding:4px 12px;color:var(--text2)">Ctrl+E</td><td>Exporter pour Suno (.txt)</td></tr>
+      <tr><td style="padding:4px 12px;color:var(--text2)">Ctrl+Z</td><td>Annuler</td></tr>
+      <tr><td style="padding:4px 12px;color:var(--text2)">Ctrl+Y</td><td>Retablir</td></tr>
+      <tr><td style="padding:4px 12px;color:var(--text2)">Suppr</td><td>Supprimer la section selectionnee</td></tr>
+    </table>
+
+    <h4 style="margin:16px 0 8px;color:var(--yellow)">Comment utiliser</h4>
+    <ol style="padding-left:20px;line-height:2">
+      <li><strong>Ajoutez vos chanteurs</strong> dans le panneau de gauche avec nom, type de voix et phonetique</li>
+      <li><strong>Choisissez un template</strong> ou ajoutez des sections manuellement</li>
+      <li><strong>Glissez-deposez</strong> les sections pour les reordonner</li>
+      <li><strong>Cliquez sur une section</strong> pour ouvrir l'editeur et ecrire les paroles</li>
+      <li><strong>Assignez chaque section</strong> a un chanteur specifique</li>
+      <li><strong>Consultez l'apercu</strong> dans l'onglet "Apercu Suno"</li>
+      <li><strong>Copiez ou exportez</strong> le resultat directement dans Suno</li>
+    </ol>
+
+    <h4 style="margin:16px 0 8px;color:var(--yellow)">Metatags Suno — Reference</h4>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <h5 style="color:var(--green);margin-bottom:6px">Structure</h5>
+        <div style="font-family:var(--mono);font-size:.8rem;line-height:1.8;color:var(--text2)">
+          [Intro] [Verse 1] [Pre-Chorus]<br>[Chorus] [Post-Chorus] [Bridge]<br>
+          [Hook] [Instrumental] [Interlude]<br>[Break] [Drop] [Outro] [End]
+        </div>
+      </div>
+      <div>
+        <h5 style="color:var(--green);margin-bottom:6px">Voix / Performance</h5>
+        <div style="font-family:var(--mono);font-size:.8rem;line-height:1.8;color:var(--text2)">
+          [Male Vocals] [Female Vocals]<br>[Duet] [Harmony] [Choir]<br>
+          [Spoken Word] [Whisper] [Rap]<br>[Belting] [Falsetto] [Growl]
+        </div>
+      </div>
+    </div>
+
+    <h4 style="margin:16px 0 8px;color:var(--yellow)">Multi-voix — Conseils</h4>
+    <ul style="padding-left:20px;line-height:2;color:var(--text2)">
+      <li>Utilisez <code style="color:var(--accent2)">[VERSE 1 - NomChanteur (male)]</code> pour indiquer qui chante</li>
+      <li>Le champ <strong>Phonetique Suno</strong> permet d'ecrire le nom tel que Suno doit le prononcer</li>
+      <li>Pour des voix vraiment distinctes, utilisez <strong>Voices/Personas</strong> dans Suno v5.5</li>
+      <li>Generez chaque section separement avec une Persona differente, puis assemblez avec Extend</li>
+      <li>Le style global (champ "Style de musique") a plus d'impact que les tags individuels</li>
+    </ul>
+
+    <h4 style="margin:16px 0 8px;color:var(--yellow)">Phonetique</h4>
+    <ul style="padding-left:20px;line-height:2;color:var(--text2)">
+      <li>Ecrivez les noms comme ils doivent etre prononces : "Fenn-riss" pour Fenrice</li>
+      <li>Separez les syllabes avec des tirets</li>
+      <li>Les noms courts et simples fonctionnent mieux</li>
+      <li>Testez plusieurs variantes pour trouver la bonne prononciation</li>
+    </ul>
+  `;
+  document.getElementById('modalHelp').classList.add('open');
+}
+</script>
+
+</body>
+</html>
