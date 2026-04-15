@@ -25,6 +25,8 @@ Aucune dependance, aucun build, aucune installation.
 - Editeur de paroles par section
 - Apercu Suno colore en temps reel
 - Export `.txt` pour Suno
+- Export `Pack Suno` (`*_suno_pack.txt`) avec style, lyrics strict/balanced, plan extend et check
+- Export `Plan Extend` (`*_suno_extend_plan.md`) bloc par bloc pour generation iterative Suno
 - Export HTML de partage (`*_share.html`) avec toutes les informations de la chanson
 - Export Markdown Discord (`*_discord.md`) avec prompts, stats et diagnostic
 - Sauvegarde / ouverture projet `.json`
@@ -50,6 +52,12 @@ Aucune dependance, aucun build, aucune installation.
   - normalisation des sections instrumentales
   - statistiques vocales par chanteur (sections / lignes / mots)
 - Diagnostic compatibilite manuel
+- Diagnostic compatibilite Suno renforce:
+  - style manquant
+  - lyrics trop longs
+  - trop de sections pour une generation unique
+  - section trop longue (>16 lignes)
+  - absence de chorus
 - Estimation de duree de morceau
 - Optimiseur de style prompt (`Wand Style`)
 - Correctif responsive de l'onglet `Apercu Suno` (plus de debordement horizontal)

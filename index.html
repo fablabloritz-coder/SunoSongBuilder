@@ -320,6 +320,7 @@ a{color:var(--accent2);text-decoration:none}
       <button class="btn" onclick="showTemplates()" title="Templates de chanson">&#9776; Templates</button>
       <button class="btn" onclick="importProject()" title="Ctrl+O">&#128194; Ouvrir</button>
       <button class="btn" onclick="saveProject()" title="Ctrl+S">&#128190; Sauver</button>
+      <button class="btn" onclick="exportSunoPack()" title="Exporte un pack complet pour Suno (lyrics/style/extend)">Pack Suno</button>
       <button class="btn" onclick="exportShareHtml()" title="Exporter une page HTML complete a partager">&#127760; Export HTML</button>
       <button class="btn" onclick="exportDiscordMarkdown()" title="Exporter un resume markdown pour Discord"># Export MD</button>
       <button class="btn primary" onclick="exportSuno()" title="Ctrl+E">&#128203; Exporter Suno</button>
@@ -407,6 +408,8 @@ a{color:var(--accent2);text-decoration:none}
           <button class="btn small primary" onclick="copyPreview()">Copier tout</button>
           <button class="btn small" onclick="copyStrictPreview()">Copier strict</button>
           <button class="btn small" onclick="runCompatibilityCheck()">Diagnostiquer</button>
+          <button class="btn small" onclick="exportSunoPack()">Pack Suno</button>
+          <button class="btn small" onclick="exportSunoExtendPlan()">Plan Extend</button>
           <button class="btn small" onclick="exportShareHtml()">Exporter HTML</button>
           <button class="btn small" onclick="exportSuno()">Exporter .txt</button>
           <span class="spacer"></span>
@@ -1357,9 +1360,26 @@ function runCompatibilityCheck() {
 function detectCompatibilityIssues() {
   const issues = [];
   const seen = new Set();
+  const strictLen = renderSunoTextWithMode('strict').length;
 
   if (!project.sections.length) {
     issues.push({level:'error', code:'empty-project', message:'Aucune section dans le projet.'});
+  }
+
+  if (!project.style || !project.style.trim()) {
+    issues.push({level:'warn', code:'style-missing', message:'Style prompt vide: Suno donnera des resultats moins stables.'});
+  }
+
+  if (strictLen > 5000) {
+    issues.push({level:'warn', code:'lyrics-too-long', message:'Prompt lyrics tres long (>5000 caracteres): risque de perte de details dans Suno.'});
+  }
+
+  if (project.sections.length > 28) {
+    issues.push({level:'warn', code:'too-many-sections', message:'Trop de sections: mieux vaut fragmenter en plusieurs generations via Extend.'});
+  }
+
+  if (!project.sections.some(s => s.sectionType === 'CHORUS')) {
+    issues.push({level:'warn', code:'no-chorus', message:'Aucun CHORUS detecte: les resultats Suno sont souvent moins memorables sans refrain.'});
   }
 
   project.sections.forEach((sec, idx) => {
@@ -1376,6 +1396,10 @@ function detectCompatibilityIssues() {
 
     if (sec.assignment !== 'instrumental' && (!sec.lyrics || !sec.lyrics.trim())) {
       issues.push({level:'warn', code:'vocal-no-lyrics', sectionId:sec.id, message:`${where}: section vocale sans paroles.`});
+    }
+
+    if (sec.lyrics && sec.lyrics.split('\n').filter(l => l.trim()).length > 16) {
+      issues.push({level:'warn', code:'section-too-long', sectionId:sec.id, message:`${where}: section tres longue (>16 lignes), envisagez un split pour Suno.`});
     }
 
     if (!['all','instrumental','public','mixed'].includes(sec.assignment) && !singerById(sec.assignment)) {
@@ -1487,6 +1511,9 @@ function autoFixIssues() {
     } else if (issue.code === 'duplicate-number') {
       autoNumber();
       fixed++;
+    } else if (issue.code === 'section-too-long') {
+      sec.lyrics = (sec.lyrics || '').split('\n').slice(0, 16).join('\n');
+      fixed++;
     }
   }
 
@@ -1494,6 +1521,95 @@ function autoFixIssues() {
   if (selectedSectionId) loadEditor(selectedSectionId);
   toast(`${fixed} correction(s) appliquee(s)`);
   setStatus(`Auto-fix termine: ${fixed} correction(s)`);
+}
+
+function buildSunoPackText() {
+  const title = project.title || 'Sans titre';
+  const style = project.style || '(non renseigne)';
+  const strict = renderSunoTextWithMode('strict');
+  const balanced = renderSunoTextWithMode('balanced');
+  const issues = detectCompatibilityIssues();
+
+  const blocks = [];
+  blocks.push('=== SUNO PACK ===');
+  blocks.push(`Titre: ${title}`);
+  blocks.push(`Style prompt: ${style}`);
+  blocks.push(`Sections: ${project.sections.length}`);
+  blocks.push('');
+
+  blocks.push('=== LYRICS STRICT ===');
+  blocks.push(strict || '(vide)');
+  blocks.push('');
+
+  blocks.push('=== LYRICS BALANCED ===');
+  blocks.push(balanced || '(vide)');
+  blocks.push('');
+
+  blocks.push('=== EXTEND STEPS ===');
+  project.sections.forEach((sec, i) => {
+    const head = buildHeader(sec, 'strict');
+    blocks.push(`${i + 1}. ${head}`);
+  });
+  blocks.push('');
+
+  blocks.push('=== COMPAT CHECK ===');
+  if (!issues.length) blocks.push('OK');
+  else issues.forEach(i => blocks.push(`- [${i.level}] ${i.message}`));
+
+  return blocks.join('\n');
+}
+
+function exportSunoPack() {
+  const content = buildSunoPackText();
+  const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (project.title || 'chanson') + '_suno_pack.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Pack Suno exporte');
+  setStatus('Pack Suno genere (lyrics/style/extend/check)');
+}
+
+function buildSunoExtendPlan() {
+  const lines = [];
+  lines.push(`# Plan Extend - ${project.title || 'Chanson'}`);
+  lines.push('');
+  lines.push('Utilisation conseillee dans Suno:');
+  lines.push('1. Generer le bloc 1 avec le style prompt global.');
+  lines.push('2. Utiliser Extend pour chaque bloc suivant, dans l ordre.');
+  lines.push('3. Garder le meme style prompt pour conserver la coherence.');
+  lines.push('');
+  lines.push(`Style prompt: ${project.style || '(non renseigne)'}`);
+  lines.push('');
+
+  project.sections.forEach((sec, i) => {
+    const head = buildHeader(sec, 'strict');
+    const mood = (sec.moodTags || []).map(t => normalizeMoodTag(t, 'strict')).join(', ');
+    lines.push(`## Bloc ${i + 1}`);
+    lines.push(`Header: ${head}`);
+    if (mood) lines.push(`Mood tags: ${mood}`);
+    if (sec.performanceTag) lines.push(`Performance: ${sec.performanceTag}`);
+    lines.push('Lyrics:');
+    lines.push('```');
+    lines.push((sec.lyrics || '').trim() || '(instrumental / no lyrics)');
+    lines.push('```');
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function exportSunoExtendPlan() {
+  const content = buildSunoExtendPlan();
+  const blob = new Blob([content], {type: 'text/markdown;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (project.title || 'chanson') + '_suno_extend_plan.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Plan Extend exporte');
+  setStatus('Plan Extend genere pour workflow Suno');
 }
 
 function optimizeStylePrompt() {
